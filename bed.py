@@ -20,6 +20,11 @@ class Bed:
         return "{}{}: Level:{}, Targ:{}, FillMin:{}, Valve:{}, Happy:{}" \
         .format(self.row, self.col, self.water_level, self.target, self.target_min, self.valve_status, self.isHappy())
 
+    def setValve(self, state, client, user):
+        if state == 'open':
+            client.publish(f"{user}/bed-{self.row}{self.col}/valve/set", 'open')
+        elif state == 'close':
+            client.publish(f"{user}/bed-{self.row}{self.col}/valve/set", 'close')
 
     # returns if bed has correct level
     def isHappy(self):
