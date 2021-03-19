@@ -12,6 +12,8 @@ PASSWD = 'GLaCcpRG144an4YriV22'
 # stores bed information
 bed_dict = {}
 
+tank_open = False
+sump_open = False
 
 # if you dont see a "connection successfull" message. email chelsee imediatly
 # becuase this should definatly work
@@ -90,6 +92,24 @@ def init_sim(diff):
     # client.publish(f"{USER}/meta/mode/set", 'hard')
     return client
 
+def set_tank(state):
+    if state == 'open':
+        tank_open = True
+        client.publish(f"{USER}/tank/valve/set", 'open')
+    elif state == 'close':
+        tank_open = False
+        client.publish(f"{USER}/tank/valve/set", 'close')
+
+def set_sump(state):
+    if state == 'open':
+        sump_open = True
+        client.publish(f"{USER}/sump/valve/set", 'open')
+    elif state == 'close':
+        sump_open = False
+        client.publish(f"{USER}/sump/valve/set", 'close')
+
+
+
 client = init_sim('easy')
 
 # wait one sec after setting mode to ensure restart has completed
@@ -97,8 +117,9 @@ time.sleep(2)
 
 # open some valves and what the water flow :)
 client.message_callback_add(f"{USER}/#/valve", valve_opened)
-client.publish(f"{USER}/tank/valve/set", 'open')
-client.publish(f"{USER}/sump/valve/set", 'close')
+# client.publish(f"{USER}/tank/valve/set", 'open')
+set_tank('open')
+# client.publish(f"{USER}/sump/valve/set", 'open')
 # client.publish(f"{USER}/bed-A1/valve/set", 'open')
 # client.publish(f"{USER}/bed-A2/valve/set", 'open')
 # client.publish(f"{USER}/bed-B1/valve/set", 'open')
@@ -113,18 +134,41 @@ try:
         print(i)
         if (i == 10):
             client.publish(f"{USER}/tank/valve/set", 'close')
-            # client.publish(f"{USER}/bed-A2/valve/set", 'close')
+            # # client.publish(f"{USER}/bed-A2/valve/set", 'close')
             # client.publish(f"{USER}/bed-B2/valve/set", 'open')
             client.publish(f"{USER}/bed-A1/valve/set", 'open')
-            client.publish(f"{USER}/bed-B1/valve/set", 'open')
+            # client.publish(f"{USER}/bed-B1/valve/set", 'open')
+
+        tank_count = 0
+        sump_count = 0
 
         for key, bed in bed_dict.items():
-        #     if not bed.happy:
-        #         if (bed.target == 'Fill' and (bed.water_level < bed.target_min)):
-        #             client.publish(f"{USER}/bed-{key}/valve/set", 'open')
-        #         elif (bed.target == 'Fill' and (bed.water_level > bed.target_min) and bed.valve_status == 'open'):
-        #             client.publish(f"{USER}/bed-{key}/valve/set", 'close')
+
+            if bed.target == 'Fill':
+                if bed.water_level < bed.target_min:
+                    bed.setValve('open', client, USER)
+                else:
+                    bed.setValve('close', client, USER)
+                if bed.isHappy() is not True:
+                    tank_count += 1
+            else:
+                if bed.water_level != 0:
+                    bed.setValve('open', client, USER)
+                else:
+                    bed.setValve('close', client, USER)
+                if bed.isHappy() is not True:
+                    sump_count += 1
+            # print deets from each bed
             print(str(bed))
+
+        if tank_count > sump_count:
+            set_tank('open')
+            set_sump('close')
+        elif sump_count > tank_count:
+            set_tank('close')
+            set_sump('open')
+        else:
+            pass
 
 
 
