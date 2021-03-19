@@ -13,7 +13,14 @@ PASSWD = 'GLaCcpRG144an4YriV22'
 bed_dict = {}
 
 tank_open = False
+tank_level = 0
 sump_open = False
+
+
+score = 0
+score_max = 0
+score_perc = 0
+
 
 # if you dont see a "connection successfull" message. email chelsee imediatly
 # becuase this should definatly work
@@ -61,6 +68,25 @@ def process_message(msg, val):
         else:
             pass
 
+    elif 'harry/meta' in msg:
+        if 'score-%' in msg:
+            global score_perc
+            score_perc = int(val)
+
+        elif 'score-max' in msg:
+            # pass here otherwise the below test for score will also
+            # return this msg.
+            global score_max
+            score_max = int(val)
+
+
+        elif 'score' in msg:
+            global score
+            score = int(val)
+
+    elif 'harry/tank/water_level' in msg:
+        global tank_level
+        tank_level = int(val)
 
 def get_bed_location(str):
     return str[str.find('-')+1:str.find('-')+3]
@@ -93,6 +119,7 @@ def init_sim(diff):
     return client
 
 def set_tank(state):
+    global tank_open
     if state == 'open':
         tank_open = True
         client.publish(f"{USER}/tank/valve/set", 'open')
@@ -101,6 +128,7 @@ def set_tank(state):
         client.publish(f"{USER}/tank/valve/set", 'close')
 
 def set_sump(state):
+    global sump_open
     if state == 'open':
         sump_open = True
         client.publish(f"{USER}/sump/valve/set", 'open')
@@ -131,7 +159,10 @@ try:
     while True:
         i+=1
         time.sleep(1)
+        print('\n')
         print(i)
+        print(f"{score}/{score_max}  |  {score_perc}%")
+        print(f"tank: {tank_open}, sump: {sump_open}  |   Water Remaining: {tank_level}")
         if (i == 10):
             client.publish(f"{USER}/tank/valve/set", 'close')
             # # client.publish(f"{USER}/bed-A2/valve/set", 'close')
@@ -144,20 +175,24 @@ try:
 
         for key, bed in bed_dict.items():
 
+            # if bed needs filling
             if bed.target == 'Fill':
-                if bed.water_level < bed.target_min:
+                if bed.water_level < bed.target_min and tank_open:
+                    # client.publish(f"{USER}/bed-{key}/valve/set", 'open')
                     bed.setValve('open', client, USER)
                 else:
                     bed.setValve('close', client, USER)
                 if bed.isHappy() is not True:
                     tank_count += 1
+            # if bed needs draining
             else:
-                if bed.water_level != 0:
+                if bed.water_level != 0 and sump_open:
                     bed.setValve('open', client, USER)
                 else:
                     bed.setValve('close', client, USER)
                 if bed.isHappy() is not True:
                     sump_count += 1
+
             # print deets from each bed
             print(str(bed))
 
