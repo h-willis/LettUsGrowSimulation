@@ -175,17 +175,19 @@ try:
 
         for key, bed in bed_dict.items():
 
-            # if bed needs filling
             if bed.target == 'Fill':
+                # if bed needs filling and tank is open
                 if bed.water_level < bed.target_min and tank_open:
                     # client.publish(f"{USER}/bed-{key}/valve/set", 'open')
                     bed.setValve('open', client, USER)
+                # bed does not need filling
                 else:
                     bed.setValve('close', client, USER)
                 if bed.isHappy() is not True:
                     tank_count += 1
-            # if bed needs draining
             else:
+                # if bed needs draining
+                # of if bed.water_level != 0 and can drain into below
                 if bed.water_level != 0 and sump_open:
                     bed.setValve('open', client, USER)
                 else:
