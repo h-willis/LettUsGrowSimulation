@@ -18,7 +18,10 @@ class Bed:
     def __str__(self):
         # return(f"{self.row}{self.col}, Level:{self.current_level}, Targ:{self.target}, Valve:{self.valve_status}, Happy:{self.happy}")
         return "{}{}: Level:{}, Targ:{}, FillMin:{}, Valve:{}, Happy:{}" \
-        .format(self.row, self.col, self.water_level, self.target, self.target_min, self.valve_status, self.happy)
+        .format(self.row, self.col, self.water_level, self.target, self.target_min, self.valve_status, self.isHappy())
 
-    def set_valve():
-        pass
+
+    # returns if bed has correct level
+    def isHappy(self):
+        return ((self.target == 'Fill') and (self.water_level > self.target_min)) or \
+               ((self.target == 'Empty') and (self.water_level == 0))
