@@ -39,6 +39,11 @@ def process_message(msg, val):
         # test if bed already exists
         # print(f'{msg} {val}')
         bed_location = get_bed_location(msg)
+        # if flipped (as sometimes happens in medium)
+        if(bed_location[0].isdigit()):
+            bed_location = f"{bed_location[1]}{bed_location[0]}"
+
+
         if(bed_location not in bed_dict.keys()):
             bed_dict[bed_location] = Bed(bed_location[0], bed_location[1])
 
