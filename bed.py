@@ -38,3 +38,13 @@ class Bed:
     def isHappy(self):
         return (self.target == 'Fill' and (self.water_level >= self.target_min and self.water_level < self.target_max)) \
                or (self.target == 'Empty' and self.water_level == 0)
+
+    def isOpen(self):
+        return self.valve_status == 'open'
+
+    def needsFilling(self):
+        return self.target == 'Fill' and self.water_level < self.target_min
+
+    def needsEmptying(self):
+        return (self.target == 'Empty' and self.water_level > 0) \
+                or (self.target == 'Fill' and self.water_level > self.water_max)
