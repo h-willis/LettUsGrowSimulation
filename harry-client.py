@@ -128,6 +128,8 @@ def set_tank(state):
     if state == 'open':
         tank_open = True
         client.publish(f"{USER}/tank/valve/set", 'open')
+        if sump_open:
+            set_sump('close')
     elif state == 'close':
         tank_open = False
         client.publish(f"{USER}/tank/valve/set", 'close')
@@ -137,10 +139,11 @@ def set_sump(state):
     if state == 'open':
         sump_open = True
         client.publish(f"{USER}/sump/valve/set", 'open')
+        if tank_open:
+            set_tank('close')
     elif state == 'close':
         sump_open = False
         client.publish(f"{USER}/sump/valve/set", 'close')
-
 
 
 client = init_sim('easy')
