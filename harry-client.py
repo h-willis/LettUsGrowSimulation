@@ -39,6 +39,7 @@ def message_recieved(client, userdata, message):
 
 # Extract relevant data from message and place into objects
 def process_message(msg, val):
+    global max_row
     if 'bed' in msg:
         # test if bed already exists
         # print(f'{msg} {val}')
@@ -165,7 +166,7 @@ def set_sump(state):
         client.publish(f"{USER}/sump/valve/set", 'close')
 
 
-client = init_sim('easy')
+client = init_sim('hard')
 
 # wait one sec after setting mode to ensure restart has completed
 time.sleep(2)
@@ -188,6 +189,7 @@ try:
         time.sleep(1)
         print('\n')
         print(i)
+        print(len(bed_dict))
         print(f"{score}/{score_max}  |  {score_perc}%")
         print(f"tank: {tank_open}, sump: {sump_open}  |   Water Remaining: {tank_level}")
 
@@ -209,7 +211,7 @@ try:
 
             elif(bed.needsFilling()):
                 if (key not in beds_filling):
-                    bed_filling.append(key)
+                    beds_filling.append(key)
 
                 if(tank_open):
                     bed.setValve('open', client, USER)
@@ -225,7 +227,7 @@ try:
 
             elif(bed.needsEmptying()):
                 if (key not in beds_draining):
-                    bed_draining.append(key)
+                    beds_draining.append(key)
 
                 if(tank_open):
                     bed.setValve('close', client, USER)

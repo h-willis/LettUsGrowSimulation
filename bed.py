@@ -30,9 +30,11 @@ class Bed:
         # if valve was asked to open and is currently closed
         if state == 'open' and self.valve_status == 'close':
             client.publish(f"{user}/bed-{self.row}{self.col}/valve/set", 'open')
+            self.valve_status = 'open'
         # if valve was asked to close and is currently open
         elif state == 'close' and self.valve_status == 'open':
             client.publish(f"{user}/bed-{self.row}{self.col}/valve/set", 'close')
+            self.valve_status = 'close'
 
     # returns if bed has correct level
     def isHappy(self):
