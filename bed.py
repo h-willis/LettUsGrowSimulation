@@ -47,4 +47,4 @@ class Bed:
 
     def needsEmptying(self):
         return (self.target == 'Empty' and self.water_level > 0) \
-                or (self.target == 'Fill' and self.water_level > self.water_max)
+                or (self.target == 'Fill' and self.water_level > self.target_max)
