@@ -11,12 +11,16 @@ PASSWD = 'GLaCcpRG144an4YriV22'
 
 # stores bed information
 bed_dict = {}
+beds_draining = []
+beds_filling  = []
+max_row = -1
 
+# tank and sump information
 tank_open = False
 tank_level = 0
 sump_open = False
 
-
+# score info
 score = 0
 score_max = 0
 score_perc = 0
@@ -39,12 +43,11 @@ def process_message(msg, val):
         # test if bed already exists
         # print(f'{msg} {val}')
         bed_location = get_bed_location(msg)
-        # if flipped (as sometimes happens in medium)
-        if(bed_location[0].isdigit()):
-            bed_location = f"{bed_location[1]}{bed_location[0]}"
 
-
+        # if new bed location
         if(bed_location not in bed_dict.keys()):
+            if(int(bed_location[1]) > max_row):
+                max_row = int(bed_location[1])
             bed_dict[bed_location] = Bed(bed_location[0], bed_location[1])
 
         if 'water_level' in msg:
@@ -94,12 +97,28 @@ def process_message(msg, val):
         tank_level = int(val)
 
 def get_bed_location(str):
-    return str[str.find('-')+1:str.find('-')+3]
+    bed_location = str[str.find('-')+1:str.find('-')+3]
+    # if flipped (as sometimes happens in medium)
+    if(bed_location[0].isdigit()):
+        bed_location = f"{bed_location[1]}{bed_location[0]}"
+    return bed_location
 
 def valve_opened(client, userdata, message):
     value = message.payload.decode()
     print(f'\nvalve {message.topic} successfully set to {value}\n')
 
+def check_for_rows_below(bed_list, current_row):
+    for bed in bed_list:
+        # bed[1] is the beds row
+        if (int(bed[1]) < current_row):
+            return True
+    return False
+
+def check_for_rows_above(bed_list, current_row):
+    for bed in bed_list:
+        if (int(bed[1]) > current_row):
+            return True
+    return False
 
 def mode_set(client, userdata, message):
     value = message.payload.decode()
@@ -171,49 +190,59 @@ try:
         print(i)
         print(f"{score}/{score_max}  |  {score_perc}%")
         print(f"tank: {tank_open}, sump: {sump_open}  |   Water Remaining: {tank_level}")
-        if (i == 10):
-            client.publish(f"{USER}/tank/valve/set", 'close')
-            # # client.publish(f"{USER}/bed-A2/valve/set", 'close')
-            # client.publish(f"{USER}/bed-B2/valve/set", 'open')
-            client.publish(f"{USER}/bed-A1/valve/set", 'open')
-            # client.publish(f"{USER}/bed-B1/valve/set", 'open')
 
+        # keeps track of tank / sump requests
         tank_count = 0
         sump_count = 0
 
+        # cycle through all beds
         for key, bed in bed_dict.items():
 
-            if bed.target == 'Fill':
-                # if bed needs filling and tank is open
-                if bed.water_level < bed.target_min and tank_open:
-                    # client.publish(f"{USER}/bed-{key}/valve/set", 'open')
-                    bed.setValve('open', client, USER)
-                # bed does not need filling
-                else:
+            if bed.isHappy():                                # if bed is at right level but valve still open
+                if bed.isOpen():
                     bed.setValve('close', client, USER)
-                if bed.isHappy() is not True:
-                    tank_count += 1
-            else:
-                # if bed needs draining
-                # of if bed.water_level != 0 and can drain into below
-                if bed.water_level != 0 and sump_open:
+                if key in beds_draining:
+                    beds_draining.remove(key)
+                if key in beds_filling:
+                    beds_filling.remove(key)
+                continue
+
+            elif(bed.needsFilling()):
+                if (key not in beds_filling):
+                    bed_filling.append(key)
+
+                if(tank_open):
                     bed.setValve('open', client, USER)
-                else:
+                elif(sump_open):
                     bed.setValve('close', client, USER)
-                if bed.isHappy() is not True:
-                    sump_count += 1
+                elif(check_for_rows_below(beds_filling, bed.row)):
+                    bed.setValve('close', client, USER)
+                elif(check_for_rows_above(beds_draining, bed.row)):
+                    bed.setValve('open', client, USER)
+                elif(bed.row == max_row):
+                    bed.setValve('open', client, USER)
+                    set_tank('open')
+
+            elif(bed.needsEmptying()):
+                if (key not in beds_draining):
+                    bed_draining.append(key)
+
+                if(tank_open):
+                    bed.setValve('close', client, USER)
+                elif(sump_open):
+                    bed.setValve('open', client, USER)
+                elif(check_for_rows_above(beds_draining, bed.row)):
+                    bed.setValve('close', client, USER)
+                elif(check_for_rows_below(beds_filling, bed.row)):
+                    bed.setValve('open', client, USER)
+                elif(bed.row == 1):
+                    bed.setValve('open', client, USER)
+                    set_sump('open')
+
 
             # print deets from each bed
             print(str(bed))
 
-        if tank_count > sump_count:
-            set_tank('open')
-            set_sump('close')
-        elif sump_count > tank_count:
-            set_tank('close')
-            set_sump('open')
-        else:
-            pass
 
 
 
