@@ -36,5 +36,5 @@ class Bed:
 
     # returns if bed has correct level
     def isHappy(self):
-        return ((self.target == 'Fill') and (self.water_level > self.target_min)) or \
-               ((self.target == 'Empty') and (self.water_level == 0))
+        return (self.target == 'Fill' and (self.water_level >= self.target_min and self.water_level < self.target_max)) \
+               or (self.target == 'Empty' and self.water_level == 0)
