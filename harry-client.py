@@ -10,7 +10,7 @@ USER = 'harry'
 PASSWD = 'GLaCcpRG144an4YriV22'
 
 # stores bed information
-bed_dict = {}
+bed_dict = dict(dict())
 beds_draining = []
 beds_filling  = []
 max_row = -1
@@ -40,42 +40,49 @@ def message_recieved(client, userdata, message):
 # Extract relevant data from message and place into objects
 def process_message(msg, val):
     global max_row
+
     if 'bed' in msg:
         # test if bed already exists
         # print(f'{msg} {val}')
-        bed_location = get_bed_location(msg)
+        bed_col, bed_row = get_bed_column_row(msg)
 
-        # if new bed location
-        if(bed_location not in bed_dict.keys()):
-            if(int(bed_location[1]) > max_row):
-                max_row = int(bed_location[1])
-            bed_dict[bed_location] = Bed(bed_location[0], bed_location[1])
+        # if new bed column, create dict to hold rows in that col
+        if bed_col not in bed_dict.keys():
+            bed_dict[bed_col] = {}
+        # if new bed row inside col create new bed
+        if bed_row not in bed_dict[bed_col].keys():
+            bed_dict[bed_col][bed_row] = Bed(bed_col, bed_row)
+            # update max_row based on highest row seen
+            if bed_row > max_row:
+                max_row = bed_row
+
 
         if 'water_level' in msg:
             # print('wl')
-            bed_dict[bed_location].water_level = int(val)
+            bed_dict[bed_col][bed_row].water_level = int(val)
 
         elif 'target_min' in msg:
             # print('tm')
-            bed_dict[bed_location].target_min = int(val)
+            bed_dict[bed_col][bed_row].target_min = int(val)
 
         elif 'target_max' in msg:
             # print('tm')
-            bed_dict[bed_location].target_max = int(val)
+            bed_dict[bed_col][bed_row].target_max = int(val)
 
         elif 'target' in msg:
             # print('tg')
-            bed_dict[bed_location].target = val
+            bed_dict[bed_col][bed_row].target = val
 
         elif 'capacity' in  msg:
             # print('cy')
-            bed_dict[bed_location].capacity = int(val)
+            bed_dict[bed_col][bed_row].capacity = int(val)
 
         elif 'valve' in msg:
             # print('vl')
-            bed_dict[bed_location].valve_status = val
+            bed_dict[bed_col][bed_row].valve_status = val
         else:
             pass
+
 
     elif 'harry/meta' in msg:
         if 'score-%' in msg:
@@ -97,12 +104,14 @@ def process_message(msg, val):
         global tank_level
         tank_level = int(val)
 
-def get_bed_location(str):
+# extracts bed position regardless of order
+# returns converted int for row for ease later on
+def get_bed_column_row(str):
     bed_location = str[str.find('-')+1:str.find('-')+3]
     # if flipped (as sometimes happens in medium)
     if(bed_location[0].isdigit()):
         bed_location = f"{bed_location[1]}{bed_location[0]}"
-    return bed_location
+    return bed_location[0], int(bed_location[1])
 
 def valve_opened(client, userdata, message):
     value = message.payload.decode()
