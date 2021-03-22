@@ -292,7 +292,8 @@ try:
             #  filling open highest valves
             else:
                 set_tank('open')
-                for row in reversed(rows):
+                # for row in reversed(rows):
+                for row in rows:
                     if rows_filling[row] > 0:
                         for column in columns:
                             if bed_dict[column][row].needsFilling():
@@ -301,10 +302,12 @@ try:
                                 bed_dict[column][row].setValve('close', client, USER)
                         # only open top highest of valves
                         break
+        
         #  if only tank requested
         elif tank_status:
             set_tank('open')
-            for row in reversed(rows):
+            # for row in reversed(rows):
+            for row in rows:
                 if rows_filling[row] > 0:
                     for column in columns:
                         if bed_dict[column][row].needsFilling():
