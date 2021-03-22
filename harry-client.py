@@ -188,6 +188,20 @@ def check_available_draining_beds(rows, beds_draining, threshold):
                     sump_status = False
                 row_test -= 1
 
+def calculate_threshold(loop_idx, difficulty):
+    """
+    A threshold is needed to speed up filling when more rows are involved so
+    that we're not constantly balancing. decreases from 5 -> 0 as loops go on and
+    network fills up
+    """
+    if(difficulty != 'hard'):
+        return 0
+    threshold = 5 - int(loop_idx / 20)
+    if threshold < 0:
+        threshold = 0
+    return threshold
+
+
 # extracts bed position regardless of order
 # returns converted int for row for ease later on
 def get_bed_column_row_from_string(str):
@@ -285,7 +299,8 @@ try:
         # 2. Decide on tank / sump status
         # looks for whether the tank or sump is needed to fill or drain a bed
         # start at bottom. if bed need filling check rows above for draining
-        threshold = ( 5 if difficulty == 'hard' else 0)
+        # threshold = ( 5 if difficulty == 'hard' else 0)
+        threshold = calculate_threshold(i, difficulty)
         tank_status = check_available_filling_beds(rows, beds_filling, threshold)
 
 
