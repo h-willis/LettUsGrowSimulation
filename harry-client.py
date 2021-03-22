@@ -116,19 +116,6 @@ def valve_opened(client, userdata, message):
     value = message.payload.decode()
     print(f'\nvalve {message.topic} successfully set to {value}\n')
 
-def check_for_rows_below(bed_list, current_row):
-    for bed in bed_list:
-        # bed[1] is the beds row
-        if (int(bed[1]) < current_row):
-            return True
-    return False
-
-def check_for_rows_above(bed_list, current_row):
-    for bed in bed_list:
-        if (int(bed[1]) > current_row):
-            return True
-    return False
-
 def mode_set(client, userdata, message):
     value = message.payload.decode()
     print(f'\nmode successfully set to {value}\n')
