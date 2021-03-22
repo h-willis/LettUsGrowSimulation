@@ -35,6 +35,7 @@ def on_connect(client, userdata, flags, rc):
 def message_recieved(client, userdata, message):
     value = message.payload.decode()
     # print(f'messsage: {message.topic} {value}')
+    log.write(f"{message.topic}, {value}\n")
     process_message(message.topic, value)
 
 # Extract relevant data from message and place into objects
@@ -176,6 +177,7 @@ def set_sump(state):
 
 
 client = init_sim('hard')
+log = open('MessageLog.txt', 'w')
 
 # wait one sec after setting mode to ensure restart has completed
 time.sleep(2)
@@ -265,3 +267,4 @@ try:
 except KeyboardInterrupt:
     print("Exiting Sim.")
     client.loop_stop()
+    log.close()
