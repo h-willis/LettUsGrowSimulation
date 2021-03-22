@@ -357,12 +357,15 @@ try:
 
 
 
-        print(f"sump:{sump_status}{total_draining} tank:{tank_status}{total_filling}")
+        print(f"tank:{tank_status}{total_filling}  sump:{sump_status}{total_draining}")
 
         # print data out
         for row in reversed(rows):
             for column in columns:
                 print(str(bed_dict[column][row]))
+            print('--')
+
+        print(i)
 
 
 
