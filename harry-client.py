@@ -9,14 +9,14 @@ PORT = 16237
 USER = 'harry'
 PASSWD = 'GLaCcpRG144an4YriV22'
 
-# stores bed information
+# stores bed information in 2d dictionary by [col][row]
 bed_dict = dict(dict())
 top_row = -1
 
 # tank and sump information
 tank_open = False
-tank_level = 0
 sump_open = False
+tank_level = 0
 
 # score info
 score = 0
@@ -38,23 +38,12 @@ def message_recieved(client, userdata, message):
 
 # Extract relevant data from message and place into objects
 def process_message(msg, val):
-    global top_row
-
     if 'bed' in msg:
-        # test if bed already exists
-        # print(f'{msg} {val}')
-        bed_col, bed_row = get_bed_column_row(msg)
+        # get which bed is in msg
+        bed_col, bed_row = get_bed_column_row_from_string(msg)
 
-        # if new bed column, create dict to hold rows in that col
-        if bed_col not in bed_dict.keys():
-            bed_dict[bed_col] = {}
-        # if new bed row inside col create new bed
-        if bed_row not in bed_dict[bed_col].keys():
-            bed_dict[bed_col][bed_row] = Bed(bed_col, bed_row)
-            # update top_row based on highest row seen
-            if bed_row > top_row:
-                top_row = bed_row
-
+        check_bed_exists_create_if_not(bed_col, bed_row)
+        update_top_row(bed_row)
 
         if 'water_level' in msg:
             # print('wl')
@@ -103,9 +92,105 @@ def process_message(msg, val):
         global tank_level
         tank_level = int(val)
 
+def check_bed_exists_create_if_not(bed_col, bed_row):
+    # if new bed column, create dict to hold rows in that col
+    if bed_col not in bed_dict.keys():
+        bed_dict[bed_col] = {}
+    # if new bed row inside col create new bed
+    if bed_row not in bed_dict[bed_col].keys():
+        bed_dict[bed_col][bed_row] = Bed(bed_col, bed_row)
+
+def update_top_row(row):
+    global top_row
+    # update top_row based on highest row seen
+    if row > top_row:
+        top_row = row
+
+def reset_and_measure_system_state(columns, rows):
+    rows_draining = dict()
+    rows_filling = dict()
+    total_filling = 0
+    total_draining = 0
+
+    for row in rows:
+        rows_filling[row] = 0
+        rows_draining[row] = 0
+        for column in columns:
+            # close all valves and only open the ones that need opening later
+            bed_dict[column][row].setValve('close', client, USER)
+
+            if bed_dict[column][row].needsFilling():
+                rows_filling[row] += 1
+                total_filling += 1
+            elif bed_dict[column][row].needsDraining():
+                rows_draining[row] += 1
+                total_draining += 1
+
+    return rows_filling, total_filling, rows_draining, total_draining
+
+def open_draining_valves(columns, rows, beds_draining):
+    for row in rows:
+        if beds_draining[row] > 0:
+            for column in columns:
+                if bed_dict[column][row].needsDraining():
+                    bed_dict[column][row].setValve('open', client, USER)
+                else:
+                    bed_dict[column][row].setValve('close', client, USER)
+            break
+
+
+def open_filling_valves(columns, rows, beds_filling):
+    for row in reversed(rows):
+        if beds_filling[row] > 0:
+            for column in columns:
+                if bed_dict[column][row].needsFilling():
+                    bed_dict[column][row].setValve('open', client, USER)
+                else:
+                    bed_dict[column][row].setValve('close', client, USER)
+            # only open highest row of valves
+            break
+
+def get_cols_rows_from_dict():
+    # get list of columns and rows for iteration
+    columns = list(bed_dict)
+    rows = list(bed_dict[columns[0]])
+    # ascending order for rows so we start at bottom
+    rows.sort()
+    return columns, rows
+
+def check_available_filling_beds(rows, beds_filling, threshold):
+    tank_status = True
+    for row in rows:
+        # if beds more than threshold need filling
+        if beds_filling[row] > threshold:
+            row_test = row + 1
+            # check above rows for something draining
+            while row_test <= top_row:
+                # if beds above are draining then tank isn't needed and beds can
+                # be filled from other draining beds
+                if beds_draining[row_test] > threshold:
+                    tank_status = False
+                row_test += 1
+    return tank_status
+
+
+def check_available_draining_beds(rows, beds_draining, threshold):
+    # start at top, if bed needs draining check rows below for filling
+    for row in reversed(rows):
+        # if beds more than threshold need draining
+        if beds_draining[row] > threshold:
+            # print('draining')
+            row_test = row - 1
+            # sump_status = True
+            # check below rows for something filling
+            while row_test >= 1:
+                if beds_filling[row_test] > threshold:
+                    sump_status = False
+                row_test -= 1
+
 # extracts bed position regardless of order
 # returns converted int for row for ease later on
-def get_bed_column_row(str):
+def get_bed_column_row_from_string(str):
     bed_location = str[str.find('-')+1:str.find('-')+3]
     # if flipped (as sometimes happens in medium)
     if(bed_location[0].isdigit()):
@@ -163,99 +248,48 @@ def set_sump(state):
 # set up logging file to store all received messages for debugging
 log = open('MessageLog.txt', 'w')
 
-difficulty = 'medium'
+difficulty = 'hard'
 client = init_sim(difficulty)
 
 # wait two secs after setting mode to ensure restart has completed
 time.sleep(2)
 
-
+# start with tank open
 set_tank('open')
 
 
 i = 0
+# try except loop to break out with keyboard interrupt and safely shut down program
 try:
     while True:
         i+=1
         time.sleep(1)
-        print('\n')
-        print(i)
-        print(f"{score}/{score_max}  |  {score_perc}%")
-        print(f"tank: {tank_open}, sump: {sump_open}  |   Water Remaining: {tank_level}")
-        # keeps track of tank / sump requests
-        tank_count = 0
-        sump_count = 0
 
 
-        # get list of colmns and rows for iteration
-        columns = list(bed_dict)
-        rows = list(bed_dict[columns[0]])
-        # ascending order for rows so we start at bottom
-        rows.sort()
-        # print(rows)
-        # create record of draining / filling requests per row
-        rows_draining = dict()
-        rows_filling = dict()
-        total_filling = 0
-        total_draining = 0
-        for row in rows:
-            rows_draining[row] = 0
-            rows_filling[row] = 0
-
-        tank_status = True
-        sump_status = True
+        # get list of rows and cols for iteration through further down
+        columns, rows = get_cols_rows_from_dict()
 
 
-        # 1. assess system state with record of numbers of filling / draining
+        # 1. assess system state with numbers of filling / draining
         # requests on each row
         # 2. decide whether the system needs the tank or sump open or netiher
         # (tank open if there's a bed that can't be filled by a draining bed above)
         # 3. open / close required valves
 
-        # print('measure')
+
+
         # 1. Measure System
-        # starting at bottom row, assess network status
-        for row in rows:
-            for column in columns:
-                # close all valves and only open the ones that need opening
-                bed_dict[column][row].setValve('close', client, USER)
+        beds_filling, total_filling, beds_draining, total_draining = reset_and_measure_system_state(columns, rows)
 
-                if bed_dict[column][row].needsFilling():
-                    rows_filling[row] += 1
-                    total_filling += 1
-                elif bed_dict[column][row].needsDraining():
-                    rows_draining[row] += 1
-                    total_draining += 1
 
-        # print('decide')
         # 2. Decide on tank / sump status
-        # tank open assessment
+        # looks for whether the tank or sump is needed to fill or drain a bed
         # start at bottom. if bed need filling check rows above for draining
-        # start at top, if bed needs draining check rows below for filling
-        for row in rows:
-            # if filling bed in row
-            if rows_filling[row] > 0:
-                # print('filling')
-                # tank_status = True
-                row_test = row + 1
-                # check above rows for something draining
-                while row_test <= top_row:
-                    if rows_draining[row_test] > 0:
-                        tank_status = False
-                    row_test += 1
+        threshold = ( 5 if difficulty == 'hard' else 0)
+        tank_status = check_available_filling_beds(rows, beds_filling, threshold)
 
-        # if draining bed in row
-        # reversed rows, start at top
-        for row in reversed(rows):
-            if rows_draining[row] > 0:
-                # print('draining')
-                row_test = row - 1
-                # sump_status = True
-                # check below rows for something filling
-                while row_test >= 1:
-                    if rows_filling[row_test] > 0:
-                        sump_status = False
-                    row_test -= 1
+
+        sump_status = check_available_draining_beds(rows, beds_draining, threshold)
 
 
         # 3. Control valves based on above decisions with priority given to filling?
@@ -266,51 +300,24 @@ try:
             # open all valves to drain
             if total_draining > total_filling:
                 set_sump('open')
-                for row in rows:
-                    for column in columns:
-                        if bed_dict[column][row].needsDraining():
-                            bed_dict[column][row].setValve('open', client, USER)
-                        else:
-                            bed_dict[column][row].setValve('close', client, USER)
-                            # CURRENTLY OPENS ALL VALVES TO DRAIN NOT JUST THE BOTTOM
+                open_draining_valves(columns, rows, beds_draining)
+
 
             #  filling open highest valves
             else:
                 set_tank('open')
-                # for row in reversed(rows):
-                for row in rows:
-                    if rows_filling[row] > 0:
-                        for column in columns:
-                            if bed_dict[column][row].needsFilling():
-                                bed_dict[column][row].setValve('open', client, USER)
-                            else:
-                                bed_dict[column][row].setValve('close', client, USER)
-                        # only open top highest of valves
-                        break
-        
+                open_filling_valves(columns, rows, beds_filling)
+
+
         #  if only tank requested
         elif tank_status:
             set_tank('open')
-            # for row in reversed(rows):
-            for row in rows:
-                if rows_filling[row] > 0:
-                    for column in columns:
-                        if bed_dict[column][row].needsFilling():
-                            bed_dict[column][row].setValve('open', client, USER)
-                        else:
-                            bed_dict[column][row].setValve('close', client, USER)
-                    # only open highest row of valves
-                    break
+            open_filling_valves(columns, rows, beds_filling)
+
 
         elif sump_status:
             set_sump('open')
-            for row in rows:
-                for column in columns:
-                    if bed_dict[column][row].needsDraining():
-                        bed_dict[column][row].setValve('open', client, USER)
-                    else:
-                        bed_dict[column][row].setValve('close', client, USER)
-                        # CURRENTLY OPENS ALL VALVES TO DRAIN NOT JUST THE BOTTOM
+            open_draining_valves(columns, rows, beds_draining)
 
         # this is gunna be the fun part
         # start at top / bottom?
@@ -324,7 +331,7 @@ try:
 
             # start by opening top most beds that need emptying
             for row in reversed(rows):
-                if rows_draining[row] > 0:
+                if beds_draining[row] > 0:
                     # to iterate through all rows beneath
                     remaining_rows = row - 1
                     for column in columns:
@@ -333,19 +340,23 @@ try:
                         else:
                             bed_dict[column][row].setValve('close', client, USER)
                     break
-            # then open the beds on the next closest row that needs filling
-            for row in range(remaining_rows, 0, -1):
-                if rows_filling[row] > 0:
+
+            # # then open the beds on the next closest row that needs filling
+            # for row in range(remaining_rows, 0, -1):
+            # then open beds from the bottom that need filling
+            for row in range(1, remaining_rows+1, 1):
+                if beds_filling[row] > 0:
                     for column in columns:
                         if bed_dict[column][row].needsFilling():
                             bed_dict[column][row].setValve('open', client, USER)
                         else:
                             bed_dict[column][row].setValve('close', client, USER)
+                    break
 
 
 
-
-        print(f"tank:{tank_status}{total_filling}  sump:{sump_status}{total_draining}")
+        print('\n')
+        print(f"tank st:{tank_status}{total_filling}  sump st:{sump_status}{total_draining}")
 
         # print data out
         for row in reversed(rows):
@@ -353,6 +364,8 @@ try:
                 print(str(bed_dict[column][row]))
             print('--')
 
+        print(f"{score}/{score_max}  |  {score_perc}%")
+        print(f"Tank open: {tank_open}   |   Sump open: {sump_open}   |   Water Remaining: {tank_level}")
         print(i)
 
 
