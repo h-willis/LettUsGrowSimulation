@@ -176,21 +176,15 @@ def set_sump(state):
 
 log = open('MessageLog.txt', 'w')
 
-client = init_sim('easy')
+client = init_sim('hard')
 
 # wait one sec after setting mode to ensure restart has completed
 time.sleep(2)
 
 # open some valves and what the water flow :)
 client.message_callback_add(f"{USER}/#/valve", valve_opened)
-# client.publish(f"{USER}/tank/valve/set", 'open')
 set_tank('open')
-# client.publish(f"{USER}/sump/valve/set", 'open')
-# client.publish(f"{USER}/bed-A1/valve/set", 'open')
-# client.publish(f"{USER}/bed-A2/valve/set", 'open')
-# client.publish(f"{USER}/bed-B1/valve/set", 'open')
-# client.publish(f"{USER}/bed-B2/valve/set", 'open')
-#client.publish(f"{USER}/bed-A1/valve/set", 'close')
+
 
 i = 0
 try:
