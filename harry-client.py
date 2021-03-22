@@ -143,12 +143,11 @@ def init_sim(diff):
     client.subscribe(f'{USER}/#')
     client.message_callback_add(f"{USER}/#", message_recieved)
     client.message_callback_add(f"{USER}/meta/mode", mode_set)
+    # open some valves and what the water flow :)
+    client.message_callback_add(f"{USER}/#/valve", valve_opened)
 
     # calling set mode restarts the simulation
     client.publish(f"{USER}/meta/mode/set", diff)
-    # client.publish(f"{USER}/meta/mode/set", 'easy')
-    #client.publish(f"{USER}/meta/mode/set", 'medium')
-    # client.publish(f"{USER}/meta/mode/set", 'hard')
     return client
 
 def set_tank(state):
