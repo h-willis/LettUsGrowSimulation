@@ -173,15 +173,16 @@ def set_sump(state):
         client.publish(f"{USER}/sump/valve/set", 'close')
 
 
+# set up logging file to store all received messages for debugging
 log = open('MessageLog.txt', 'w')
 
-client = init_sim('hard')
+difficulty = 'medium'
+client = init_sim(difficulty)
 
-# wait one sec after setting mode to ensure restart has completed
+# wait two secs after setting mode to ensure restart has completed
 time.sleep(2)
 
-# open some valves and what the water flow :)
-client.message_callback_add(f"{USER}/#/valve", valve_opened)
+
 set_tank('open')
 
 
@@ -229,8 +230,6 @@ try:
         # starting at bottom row, assess network status
         for row in rows:
             for column in columns:
-                # if a bed is at the right level but valve is open the close the valve
-                # if(bed_dict[column][row].isHappy() and bed_dict[column][row].isOpen()):
                 # close all valves and only open the ones that need opening
                 bed_dict[column][row].setValve('close', client, USER)
 
