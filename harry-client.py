@@ -128,7 +128,7 @@ def reset_and_measure_system_state(columns, rows):
 
     return rows_filling, total_filling, rows_draining, total_draining
 
-def open_draining_valves(columns, rows, beds_draining):
+def open_lowest_row_draining_valves(columns, rows, beds_draining):
     for row in rows:
         if beds_draining[row] > 0:
             for column in columns:
@@ -139,7 +139,7 @@ def open_draining_valves(columns, rows, beds_draining):
             break
 
 
-def open_filling_valves(columns, rows, beds_filling):
+def open_highest_row_filling_valves(columns, rows, beds_filling):
     for row in reversed(rows):
         if beds_filling[row] > 0:
             for column in columns:
@@ -272,11 +272,11 @@ time.sleep(2)
 set_tank('open')
 
 
-i = 0
+loop_idx = 0
 # try except loop to break out with keyboard interrupt and safely shut down program
 try:
     while True:
-        i+=1
+        loop_idx+=1
         time.sleep(1)
 
 
@@ -315,24 +315,24 @@ try:
             # open all valves to drain
             if total_draining > total_filling:
                 set_sump('open')
-                open_draining_valves(columns, rows, beds_draining)
+                open_lowest_row_draining_valves(columns, rows, beds_draining)
 
 
             #  filling open highest valves
             else:
                 set_tank('open')
-                open_filling_valves(columns, rows, beds_filling)
+                open_highest_row_filling_valves(columns, rows, beds_filling)
 
 
         #  if only tank requested
         elif tank_status:
             set_tank('open')
-            open_filling_valves(columns, rows, beds_filling)
+            open_highest_row_filling_valves(columns, rows, beds_filling)
 
 
         elif sump_status:
             set_sump('open')
-            open_draining_valves(columns, rows, beds_draining)
+            open_lowest_row_draining_valves(columns, rows, beds_draining)
 
         # this is gunna be the fun part
         # start at top / bottom?
@@ -381,7 +381,7 @@ try:
 
         print(f"{score}/{score_max}  |  {score_perc}%")
         print(f"Tank open: {tank_open}   |   Sump open: {sump_open}   |   Water Remaining: {tank_level}")
-        print(i)
+        print(loop_idx)
 
 
 
