@@ -266,6 +266,20 @@ def open_highest_row_filling_valves(columns, rows, beds_filling):
             # only open highest row of valves
             break
 
+def open_fill_valves_in_row(columns, highest_fill_row):
+    for column in columns:
+        if bed_dict[column][highest_fill_row].needsFilling():
+            bed_dict[column][highest_fill_row].setValve('open', client, USER)
+        else:
+            bed_dict[column][highest_fill_row].setValve('close', client, USER)
+
+def open_drain_valves_in_row(columns, highest_drain_row):
+    for column in columns:
+        if bed_dict[column][highest_drain_row].needsDraining():
+            bed_dict[column][highest_drain_row].setValve('open', client, USER)
+        else:
+            bed_dict[column][highest_drain_row].setValve('close', client, USER)
+
 def get_cols_rows_from_dict():
     """
     Gets all current rows and columns from the bed_dict. Sorts rows in ascending
