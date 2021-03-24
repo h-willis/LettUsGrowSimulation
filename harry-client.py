@@ -403,6 +403,14 @@ def drain_from_top_to_fill_bottom(rows, beds_draining, beds_filling):
                     bed_dict[column][row].setValve('close', client, USER)
             break
 
+def get_highest_filling_row(rows, beds_filling):
+    highest_fill_rows = [row for row in beds_filling.keys() if beds_filling[row] == max(beds_filling.values())]
+    return(max(highest_fill_rows))
+
+def get_highest_draining_row(rows, beds_draining):
+    highest_drain_rows = [row for row in beds_draining.keys() if beds_draining[row] == max(beds_draining.values())]
+    return(min(highest_drain_rows))
+
 def set_tank(state):
     """
     Sets tank to requested state and updates tank_open to correct state.
@@ -528,67 +536,38 @@ try:
         # looks for whether the tank or sump is needed to fill or drain a bed
         # tank: start at bottom. if bed need filling check rows above for draining,
         # sump: then start at top. if bed needs draining check rows below for filling
-        highest_fill_rows = [row for row in beds_filling.keys() if beds_filling[row] == max(beds_filling.values())]
-        if len(highest_fill_rows) > 1:
-            highest_fill_row = max(highest_fill_rows)
-        else:
-            highest_fill_row = highest_fill_rows[0]
-        highest_drain_rows = [row for row in beds_draining.keys() if beds_draining[row] == max(beds_draining.values())]
-        if len(highest_drain_rows) > 1:
-            highest_drain_row = min(highest_drain_rows)
-        else:
-            highest_drain_row = highest_drain_rows[0]
+        highest_fill_row = get_highest_filling_row(rows, beds_filling)
+        # highest_fill_rows = [row for row in beds_filling.keys() if beds_filling[row] == max(beds_filling.values())]
+        # highest_fill_row = max(highest_fill_rows)
 
+        highest_drain_row = get_highest_draining_row(rows, beds_draining)
+        # highest_drain_rows = [row for row in beds_draining.keys() if beds_draining[row] == max(beds_draining.values())]
+        # highest_drain_row = min(highest_drain_rows)
 
-        print(f"fill row : {highest_fill_row}")
-        print(f"drain row : {highest_drain_row}")
-
-        # if highest fill req row is higher than the highest drain req row then fill that row
-        if(beds_filling[highest_fill_row] >= beds_draining[highest_drain_row]):
-            set_tank('open')
-            open_fill_valves_in_row(columns, highest_fill_row)
-        else:
-            set_sump('open')
-            open_drain_valves_in_row(columns, highest_drain_row)
-
-
-
-        threshold = calculate_threshold(loop_idx, difficulty)
-        tank_status = check_available_filling_beds(rows, beds_filling, threshold)
-        sump_status = check_available_draining_beds(rows, beds_draining, threshold)
 
 
         # 3. Control valves based on above decisions
-        # if both tank and sump needed go on which has higher request number
-        # if tank_status and sump_status:
-        #     if total_draining > total_filling:
-        #         set_sump('open')
-        #         open_lowest_row_draining_valves(columns, rows, beds_draining)
-        #
-        #     else:
-        #         set_tank('open')
-        #         open_highest_row_filling_valves(columns, rows, beds_filling)
-        #
-        #
-        # #  if only tank requested
-        # elif tank_status:
-        #     set_tank('open')
-        #     open_highest_row_filling_valves(columns, rows, beds_filling)
-        #
-        # # if only sump requested
-        # elif sump_status:
-        #     set_sump('open')
-        #     open_lowest_row_draining_valves(columns, rows, beds_draining)
-        #
-        #
-        # # start at top opening draining valves, then rows from bottom opening filling valves.
-        # # (if there's a high row to drain with a lower to fill)
-        # else:
-        #     set_sump('close')
-        #     set_tank('close')
-        #
-        #     drain_from_top_to_fill_bottom(rows, beds_draining, beds_filling)
-
+        set_tank('close')
+        set_sump('close')
+        # if highest fill req row is higher than the highest drain req row then fill that row
+        if(beds_filling[highest_fill_row] >= beds_draining[highest_drain_row]):
+            open_fill_valves_in_row(columns, highest_fill_row)
+            # from tank or from above draining row?
+            # if highest draining row is above the filling row
+            if (highest_drain_row > highest_fill_row):
+                # set_tank('close')
+                open_drain_valves_in_row(columns, highest_drain_row)
+            else:
+                set_tank('open')
+        else:
+            open_drain_valves_in_row(columns, highest_drain_row)
+            # to sump or below filling row?
+            # if highest fill row is below draining row
+            if (highest_drain_row > highest_fill_row):
+                # set_sump('close')
+                open_fill_valves_in_row(columns, highest_fill_row)
+            else:
+                set_sump('open')
 
 
 
